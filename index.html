@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <title>成語忍卷傳</title>
+    <link rel="stylesheet" href="style.css?v=46" />
+  </head>
+  <body>
+    <main class="game-shell" aria-label="成語忍卷傳">
+      <section class="stage-wrap">
+        <canvas id="gameCanvas" width="1536" height="864" aria-label="成語忍卷傳遊戲畫面"></canvas>
+
+        <header class="hud">
+          <div>
+            <strong id="areaName">卷之村</strong>
+            <span id="statusText">語印 0/70 | HP 5/5</span>
+          </div>
+          <div class="hud-actions">
+            <button id="audioToggleButton" class="icon-button" type="button">音效：開</button>
+            <button id="saveButton" class="icon-button" type="button">儲存</button>
+            <button id="resetButton" class="icon-button danger" type="button">清空</button>
+            <button id="menuButton" class="icon-button" type="button" aria-label="查看任務">任務</button>
+          </div>
+        </header>
+
+        <section id="dialogue" class="dialogue">
+          <p id="dialogueText"></p>
+          <button id="dialogueButton" type="button">開始修行</button>
+        </section>
+
+        <section id="questionPanel" class="question-panel hidden" aria-live="polite">
+          <div class="question-card">
+            <div class="question-meta" id="questionMeta">情境題</div>
+            <h1 id="questionTitle">題目</h1>
+            <p id="questionText"></p>
+            <div id="choiceList" class="choice-list"></div>
+            <div id="feedback" class="feedback"></div>
+          </div>
+        </section>
+
+        <section id="runPanel" class="run-panel hidden" aria-live="polite">
+          <div class="run-hud">
+            <strong>忍者飛奔</strong>
+            <span id="runPrompt"></span>
+          </div>
+          <div id="runLanes" class="run-lanes"></div>
+        </section>
+
+        <section id="summaryPanel" class="summary-panel hidden" aria-live="polite">
+          <div class="summary-card">
+            <h2 id="summaryTitle">關卡完成</h2>
+            <p id="summaryText"></p>
+            <button id="summaryButton" type="button">返回地圖</button>
+          </div>
+        </section>
+
+        <section id="savePrompt" class="summary-panel hidden" aria-live="polite">
+          <div class="summary-card">
+            <h2>偵測到舊進度</h2>
+            <p>要載入上次在這個瀏覽器儲存的進度嗎？</p>
+            <div class="save-actions">
+              <button id="loadSaveButton" type="button">載入進度</button>
+              <button id="newGameButton" class="secondary" type="button">重新開始</button>
+            </div>
+          </div>
+        </section>
+
+        <nav class="touch-controls" aria-label="平板操作控制">
+          <div class="dpad" aria-label="方向鍵">
+            <button class="control-icon dir-up" data-dir="up" type="button" aria-label="上"></button>
+            <button class="control-icon dir-left" data-dir="left" type="button" aria-label="左"></button>
+            <button class="control-icon dir-right" data-dir="right" type="button" aria-label="右"></button>
+            <button class="control-icon dir-down" data-dir="down" type="button" aria-label="下"></button>
+          </div>
+          <div class="action-pad">
+            <button id="backButton" class="touch-button small button-b" type="button" aria-label="返回"></button>
+            <button id="actionButton" class="touch-button primary button-a" type="button" aria-label="動作"></button>
+          </div>
+        </nav>
+      </section>
+    </main>
+
+    <script src="data/idioms.js?v=46"></script>
+    <script src="data/map.js?v=46"></script>
+    <script src="src/game.js?v=46"></script>
+  </body>
+</html>

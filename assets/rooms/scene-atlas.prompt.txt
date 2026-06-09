@@ -1,0 +1,1 @@
+﻿Scene atlas prompt: six distinct idiom learning rooms/environments in a 3x2 atlas: shrine study hall, bamboo trail, festival market, mountain decision pass, ninja forest side-scroller, boss scroll chamber. Generated with built-in OpenAI Image Gen.

@@ -1,0 +1,1 @@
+﻿Scene prop atlas prompt: 4x3 clean HD fantasy RPG interactable prop sheet on #ff00ff chroma-key: question scroll, book pedestal, lesson sign, spirit lantern, bamboo gate, festival basket, mountain signpost, boss scroll, tree platform, practice dummy, scroll chest, answer talisman. Generated with built-in OpenAI Image Gen; chroma-key removed locally.

@@ -1,0 +1,7 @@
+Use case: game asset
+Asset type: 2D sprite sheet for a tablet browser game
+Primary request: A small heroic ninja student character sprite sheet on a perfectly flat solid #ff00ff chroma-key background for background removal.
+Subject: cute but focused young ninja learner, dark blue outfit, small red scarf, holding a short wooden practice sword, friendly educational RPG style.
+Style/medium: clean HD 2D game sprite, 3/4 top-down RPG view, readable at small size, matching a hand-painted fantasy shrine map.
+Composition/framing: exact 4x4 grid sprite sheet, 4 rows for down, left, right, up walking directions, 4 frames per row, same character identity and same scale in every frame, generous padding in each cell.
+Constraints: perfectly flat solid #ff00ff background only, no shadows, no text, no watermark, no frame borders, nothing crosses cell edges, do not use #ff00ff in the character.

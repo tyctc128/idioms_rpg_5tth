@@ -1,0 +1,8 @@
+Use case: game asset
+Asset type: 2D RPG playable map background
+Primary request: A clean hand-painted HD top-down 2D RPG map for a tablet browser game about learning Chinese idioms, inspired by a Japanese shrine village but original, not copying any existing game.
+Scene/backdrop: horizontal 16:9 map, shrine courtyard in the lower center, bamboo grove on the left, lantern festival market on the right, mountain path at the top, small training arena near upper right, scroll gate / final boss doorway at upper center.
+Style/medium: clean HD 2D game art, top-down 3/4 RPG map, readable paths and zones, slightly pixel-inspired but not chunky pixel art.
+Composition/framing: 1536x864 landscape, clear walkable paths connecting six obvious challenge entrances, no UI, no text, no characters.
+Lighting/mood: warm afternoon fantasy adventure, high clarity for gameplay.
+Constraints: no letters, no signs with readable text, no watermark, avoid dark blurry areas, keep entrances visually distinct.

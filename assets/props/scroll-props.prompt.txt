@@ -1,0 +1,7 @@
+Use case: game asset
+Asset type: 2D prop pack sprite sheet
+Primary request: Educational Chinese idiom game props on a perfectly flat solid #ff00ff chroma-key background for background removal.
+Subject: six fantasy RPG props: closed golden scroll, open parchment scroll, glowing answer tablet, small red treasure chest, floating question seal, final boss dark magic scroll.
+Style/medium: clean HD 2D game props, 3/4 top-down RPG style, matching a hand-painted shrine map.
+Composition/framing: exact 3x2 grid, one prop centered in each cell, consistent lighting, generous padding.
+Constraints: perfectly flat solid #ff00ff background only, no shadows, no readable text, no watermark, no frame borders, nothing crosses cell edges, do not use #ff00ff in props.
