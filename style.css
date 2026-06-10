@@ -188,6 +188,56 @@ button {
   box-shadow: 0 16px 42px rgba(0, 0, 0, 0.45);
 }
 
+.summary-panel.complete {
+  background:
+    linear-gradient(180deg, rgba(82, 7, 13, 0.34), rgba(8, 11, 9, 0.58)),
+    rgba(8, 11, 9, 0.52);
+}
+
+.summary-panel.complete .summary-card {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(30px, 5vw, 58px) clamp(20px, 5vw, 70px);
+  border: 4px solid #f5d27a;
+  border-radius: 8px;
+  text-align: center;
+  background:
+    linear-gradient(90deg, rgba(126, 16, 24, 0.96), rgba(178, 28, 35, 0.98) 22%, rgba(130, 13, 24, 0.98) 50%, rgba(178, 28, 35, 0.98) 78%, rgba(126, 16, 24, 0.96)),
+    #8f151e;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.62), inset 0 0 0 8px rgba(255, 235, 160, 0.16);
+}
+
+.summary-panel.complete .summary-card::before,
+.summary-panel.complete .summary-card::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 28px;
+  background: repeating-linear-gradient(90deg, #f2cf63 0 36px, #ffe8a8 36px 72px);
+}
+
+.summary-panel.complete .summary-card::before {
+  top: 0;
+}
+
+.summary-panel.complete .summary-card::after {
+  bottom: 0;
+}
+
+.summary-panel.complete .summary-card h2 {
+  margin-top: 18px;
+  color: #fff6c9;
+  font-size: clamp(48px, 9vw, 92px);
+  text-shadow: 0 5px 0 rgba(78, 10, 12, 0.82), 0 0 24px rgba(255, 233, 143, 0.52);
+}
+
+.summary-panel.complete .summary-card p {
+  color: #fff3c0;
+  font-size: clamp(20px, 3.3vw, 32px);
+  font-weight: 800;
+}
+
 .question-meta {
   color: #ffd47a;
   font-weight: 700;

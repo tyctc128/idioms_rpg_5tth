@@ -63,6 +63,7 @@
     defeated: "defeated.mp3",
     victory1: "victory_1.mp3",
     victory2: "victory_2.mp3",
+    cheer: "歡呼聲.mp3",
     hit: "hit.mp3",
     sumoHit: "sumo_hit.mp3",
     swordSwing: "sword_swing_2.mp3",
@@ -1207,7 +1208,7 @@
   }
 
   function winBattle() {
-    playRandomSound(["victory1", "victory2"], 0.9);
+    if (state.currentGate?.id !== "boss") playRandomSound(["victory1", "victory2"], 0.9);
     const progress = state.roomProgress[roomId()];
     progress.boss = state.currentRoom.bossQuestions;
     state.mode = "room";
@@ -2189,11 +2190,14 @@
     const bossDefeated = progress.boss >= state.currentRoom.bossQuestions;
     if (bossDefeated && !state.cleared.has(state.currentGate.id)) {
       state.cleared.add(state.currentGate.id);
-      if (state.currentGate.id === "boss") state.gameComplete = true;
+      if (state.currentGate.id === "boss") {
+        state.gameComplete = true;
+        playCompletionCheer();
+      }
       showSummary(
-        state.currentGate.id === "boss" ? "成語魔卷已封印" : `${state.currentRoom.bossName} 已擊敗`,
+        state.currentGate.id === "boss" ? "修行成功" : `${state.currentRoom.bossName} 已擊敗`,
         state.currentGate.id === "boss"
-          ? `完成全部關卡，語印 ${state.marks.size}/${IDIOMS.length}。`
+          ? `完成全部關卡，語印 ${state.marks.size}/${IDIOMS.length}。你已經破關！`
           : `取得「${state.currentRoom.reward}」。下一個關卡已解鎖。`
       );
       return;
@@ -2211,18 +2215,26 @@
     state.mode = "summary";
     summaryTitle.textContent = title;
     summaryText.textContent = text;
-    summaryButton.textContent = "返回地圖";
+    summaryButton.textContent = state.gameComplete ? "完成修行" : "返回地圖";
+    summaryPanel.classList.toggle("complete", state.gameComplete);
     summaryPanel.classList.remove("hidden");
+  }
+
+  function playCompletionCheer() {
+    stopBackgroundMusic();
+    setTimeout(() => playSound("cheer", 1), 180);
   }
 
   function closeSummary() {
     summaryPanel.classList.add("hidden");
+    summaryPanel.classList.remove("complete");
     returnToHub(state.gameComplete ? "全部修行完成，可以重新進入各關複習。" : "回到村落，下一個門戶已開啟。");
   }
 
   function returnToHub(message) {
     questionPanel.classList.add("hidden");
     summaryPanel.classList.add("hidden");
+    summaryPanel.classList.remove("complete");
     state.place = "hub";
     state.mode = "map";
     const gate = state.currentGate;
