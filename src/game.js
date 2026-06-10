@@ -746,7 +746,14 @@
       playerHitFlash: 0,
       pushWave: 0,
       hazards: [],
+      dangerZones: [],
+      obstacles: [],
+      smallBoss: createSmallBoss(kind),
       playerShots: [],
+      evadeTime: 0,
+      openingSpawn: 0,
+      rage: 0,
+      mistakes: 0,
       step: 0,
       message: battleRuleText(state.currentGate.id),
       flash: 0
@@ -773,13 +780,16 @@
 
     if (battle.startDelay > 0) {
       battle.startDelay = Math.max(0, battle.startDelay - dt);
-      battle.message = battle.startDelay > 0 ? `準備相撲對決：${Math.ceil(battle.startDelay)}` : "開始！靠近 BOSS，面向牠按 A 推擊。";
+      battle.message = battle.startDelay > 0 ? `準備 BOSS 對決：${Math.ceil(battle.startDelay)}` : "開始！靠近 BOSS，面向牠按 A 攻擊。";
       return;
     }
 
     updateBattlePlayer(dt, battle);
     updateBossAi(dt, battle);
+    updateSmallBoss(dt, battle);
+    if (!state.battle) return;
     updateBattleHazards(dt, battle);
+    if (!state.battle) return;
     updatePlayerShots(dt, battle);
 
     if (battle.time <= 0) return loseBattle("對戰時間結束，BOSS 壓制了你。");
@@ -835,8 +845,10 @@
       dy /= len;
       state.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up";
       const speed = battle.kind === "air" || battle.kind === "final" ? 390 : 310;
-      battle.playerX = clamp(battle.playerX + dx * speed * dt, 290, 1240);
-      battle.playerY = clamp(battle.playerY + dy * speed * dt, 300, 640);
+      const nextX = clamp(battle.playerX + dx * speed * dt, 290, 1240);
+      const nextY = clamp(battle.playerY + dy * speed * dt, 300, 640);
+      battle.playerX = nextX;
+      battle.playerY = nextY;
       state.frame += dt * 13;
     }
   }
@@ -877,12 +889,12 @@
 
     battle.bossX = clamp(battle.bossX, 420, 1220);
     battle.bossY = clamp(battle.bossY, 290, 635);
-    battle.bossCooldown -= dt;
+    battle.bossCooldown -= dt * battlePressure(battle);
 
     if ((battle.kind === "shuriken" || battle.kind === "ninjutsu" || battle.kind === "air" || battle.kind === "final") && battle.bossCooldown <= 0) {
       battle.bossAttack = profile?.bossAttackTime || 0.36;
-      spawnBossHazard(battle, nx, ny);
-      battle.bossCooldown = profile?.cooldown || (battle.kind === "final" ? 0.85 : 1.15);
+      spawnBossAttack(battle, nx, ny);
+      battle.bossCooldown = bossCooldown(battle, profile?.cooldown || (battle.kind === "final" ? 0.85 : 1.15));
       battle.message = "BOSS 出招，快閃避！";
       return;
     }
@@ -893,28 +905,195 @@
       damageBattle(battle.kind === "sumo" ? "被 BOSS 推撞！先拉開距離再反推。" : "被 BOSS 近身打中！");
       battle.playerX = clamp(battle.playerX + nx * (battle.kind === "sumo" ? 92 : 70), 290, 1240);
       battle.playerY = clamp(battle.playerY + ny * (battle.kind === "sumo" ? 38 : 50), 300, 640);
-      battle.bossCooldown = battle.kind === "sumo" ? 2.35 : profile?.cooldown || 0.95;
+      battle.bossCooldown = bossCooldown(battle, battle.kind === "sumo" ? 2.35 : profile?.cooldown || 0.95);
     }
   }
 
   function bossSpeed(battle) {
-    return battle.kind === "sumo" ? 48 : combatProfiles[battle.kind]?.speed || 210;
+    const base = battle.kind === "sumo" ? 48 : combatProfiles[battle.kind]?.speed || 210;
+    return base * battlePressure(battle);
   }
 
-  function spawnBossHazard(battle, nx, ny) {
+  function battlePressure(battle) {
+    const hpPressure = 1 - battle.bossHp / battle.maxBossHp;
+    return clamp(1 + hpPressure * 0.78 + battle.rage * 0.1, 1, 2.25);
+  }
+
+  function bossCooldown(battle, base) {
+    return clamp(base / battlePressure(battle), 0.48, base);
+  }
+
+  function battleObstacles(kind) {
+    return [];
+  }
+
+  function battlePositionBlocked(battle, x, y) {
+    return (battle.obstacles || []).some((block) => x >= block.x - 42 && x <= block.x + block.w + 42 && y >= block.y - 54 && y <= block.y + block.h + 34);
+  }
+
+  function createSmallBoss(kind) {
+    return {
+      active: false,
+      willAppear: Math.random() < 0.45,
+      x: kind === "final" ? 1140 : 1110,
+      y: kind === "air" ? 530 : 590,
+      scale: kind === "final" ? 0.34 : kind === "sumo" ? 0.26 : 0.28,
+      cooldown: 0.9,
+      attack: 0,
+      hitFlash: 0,
+      step: 0
+    };
+  }
+
+  function activateSmallBoss(battle) {
+    if (!battle.smallBoss.willAppear) return;
+    if (battle.smallBoss.active) return;
+    battle.smallBoss.active = true;
+    battle.smallBoss.x = clamp(battle.bossX + (battle.bossX > 780 ? -210 : 210), 430, 1180);
+    battle.smallBoss.y = clamp(battle.bossY + 120, 330, 620);
+    battle.smallBoss.cooldown = 0.65;
+  }
+
+  function updateSmallBoss(dt, battle) {
+    const small = battle.smallBoss;
+    if (!small?.active) return;
+    small.step += dt;
+    small.attack = Math.max(0, small.attack - dt);
+    small.hitFlash = Math.max(0, small.hitFlash - dt);
+    const dx = battle.playerX - small.x;
+    const dy = battle.playerY - small.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const nx = dx / dist;
+    const ny = dy / dist;
+    const orbit = battle.kind === "sumo" || battle.kind === "sword" ? 0.5 : 0.75;
+    small.x = clamp(small.x + (nx * 80 * orbit + Math.sin(small.step * 3.1) * 70) * dt, 410, 1220);
+    small.y = clamp(small.y + (ny * 70 * orbit + Math.cos(small.step * 2.7) * 54) * dt, 315, 630);
+    small.cooldown -= dt * battlePressure(battle);
+    if (small.cooldown > 0) return;
+    small.attack = 0.38;
+    spawnSmallBossAttack(battle, small, nx, ny);
+    small.cooldown = bossCooldown(battle, battle.kind === "final" ? 1.25 : 1.45);
+  }
+
+  function spawnSmallBossAttack(battle, small, nx, ny) {
     playBossHazardSound(battle.kind);
-    const speed = { shuriken: 230, ninjutsu: 210, air: 245, final: 330 }[battle.kind] || 240;
-    const radius = { shuriken: 18, ninjutsu: 28, air: 24, final: 18 }[battle.kind] || 24;
+    const kind = battle.kind === "sumo" || battle.kind === "sword" ? "air" : battle.kind === "final" ? "shuriken" : battle.kind;
+    const speed = ({ shuriken: 260, ninjutsu: 230, air: 260, final: 320 }[kind] || 250) * battlePressure(battle);
+    battle.hazards.push({
+      x: small.x + nx * 36,
+      y: small.y + ny * 36,
+      vx: nx * speed,
+      vy: ny * speed,
+      r: kind === "ninjutsu" ? 24 : 16,
+      life: 2.8,
+      kind,
+      spin: Math.random() * Math.PI * 2
+    });
+  }
+
+  function spawnBossAttack(battle, nx, ny) {
+    if (battle.kind === "shuriken") {
+      for (const angle of [-0.24, 0, 0.24]) {
+        const dir = rotateVector(nx, ny, angle);
+        spawnBossHazard(battle, dir.x, dir.y, { kind: "shuriken" });
+      }
+      return;
+    }
+    if (battle.kind === "ninjutsu") {
+      spawnBossHazard(battle, nx, ny, { kind: "ninjutsu" });
+      spawnDangerZone(battle, battle.playerX + nx * 80, battle.playerY + ny * 45, 118, 0.72, 0.8, "fire", "被火球爆風擊中！");
+      return;
+    }
+    if (battle.kind === "air") {
+      spawnBossHazard(battle, nx, ny, { kind: "air" });
+      spawnDangerZone(battle, 768, battle.playerY, 0, 0.48, 0.75, "wind", "被疾風氣流捲中！", { w: 930, h: 54 });
+      return;
+    }
+    if (battle.kind === "final") {
+      const pattern = Math.floor(Math.random() * 3);
+      if (pattern === 0) {
+        for (const angle of [-0.22, 0.22]) {
+          const dir = rotateVector(nx, ny, angle);
+          spawnBossHazard(battle, dir.x, dir.y, { kind: "final", speed: 360 });
+        }
+      } else if (pattern === 1) {
+        spawnBossHazard(battle, nx, ny, { kind: "ninjutsu", speed: 250, radius: 30 });
+        spawnDangerZone(battle, battle.playerX, battle.playerY, 124, 0.65, 0.8, "fire", "被魔卷術式擊中！");
+      } else {
+        for (const angle of [-0.28, 0, 0.28]) {
+          const dir = rotateVector(nx, ny, angle);
+          spawnBossHazard(battle, dir.x, dir.y, { kind: "shuriken", speed: 300 });
+        }
+      }
+      return;
+    }
+    spawnBossHazard(battle, nx, ny);
+  }
+
+  function spawnBossHazard(battle, nx, ny, options = {}) {
+    playBossHazardSound(battle.kind);
+    const kind = options.kind || battle.kind;
+    const speed = (options.speed || { shuriken: 230, ninjutsu: 210, air: 245, final: 330 }[kind] || 240) * battlePressure(battle);
+    const radius = options.radius || { shuriken: 18, ninjutsu: 28, air: 24, final: 18 }[kind] || 24;
     battle.hazards.push({
       x: battle.bossX + nx * 54,
       y: battle.bossY + ny * 54,
       vx: nx * speed,
       vy: ny * speed,
       r: radius,
-      life: battle.kind === "shuriken" ? 4.2 : battle.kind === "final" ? 3.2 : 2.1,
-      kind: battle.kind,
+      life: kind === "shuriken" ? 4.2 : kind === "final" ? 3.2 : 2.1,
+      kind,
       spin: Math.random() * Math.PI * 2
     });
+  }
+
+  function rotateVector(x, y, angle) {
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    return { x: x * cos - y * sin, y: x * sin + y * cos };
+  }
+
+  function updateOpeningDodge(dt, battle) {
+    battle.openingSpawn -= dt * battlePressure(battle);
+    if (battle.openingSpawn > 0) return;
+    const dx = battle.playerX - battle.bossX;
+    const dy = battle.playerY - battle.bossY;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = dx / len;
+    const ny = dy / len;
+    if (battle.kind !== "sumo" && battle.kind !== "sword") spawnBossAttack(battle, nx, ny);
+    if (battle.kind === "sumo" || battle.kind === "sword") {
+      spawnDangerZone(battle, battle.playerX, battle.playerY, battle.kind === "sumo" ? 112 : 88, 0.52, 0.55, battle.kind === "sumo" ? "slam" : "slash", battle.kind === "sumo" ? "被相撲震地擊中！" : "被劍氣斬中！");
+    }
+    battle.openingSpawn = battle.kind === "final" ? 0.62 : 0.82;
+  }
+
+  function spawnDangerZone(battle, x, y, radius, delay, life, kind, message, rect = null) {
+    return;
+  }
+
+  function updateDangerZones(dt, battle) {
+    for (const zone of battle.dangerZones) {
+      if (zone.delay > 0) {
+        zone.delay -= dt;
+        continue;
+      }
+      zone.life -= dt;
+      zone.hitCooldown = Math.max(0, zone.hitCooldown - dt);
+      if (zone.hitCooldown <= 0 && playerInDangerZone(battle, zone)) {
+        zone.hitCooldown = 0.8;
+        damageBattle(zone.message || "踏入危險區域！");
+        if (!state.battle) return;
+      }
+    }
+    battle.dangerZones = battle.dangerZones.filter((zone) => zone.delay > 0 || zone.life > 0);
+  }
+
+  function playerInDangerZone(battle, zone) {
+    if (zone.w && zone.h) {
+      return battle.playerX >= zone.x - zone.w / 2 && battle.playerX <= zone.x + zone.w / 2 && battle.playerY >= zone.y - zone.h / 2 && battle.playerY <= zone.y + zone.h / 2;
+    }
+    return distance(battle.playerX, battle.playerY, zone.x, zone.y) <= zone.r + 34;
   }
 
   function spawnPlayerShuriken(battle, dx, dy) {
@@ -984,6 +1163,8 @@
     const battle = state.battle;
     playBattleHitSound(battle.kind);
     battle.bossHp -= 1;
+    const smallBossJoined = battle.maxBossHp - battle.bossHp >= battle.maxBossHp / 2 && !battle.smallBoss.active;
+    if (smallBossJoined) activateSmallBoss(battle);
     battle.bossHitFlash = battle.kind === "sumo" ? 0.42 : 0.25;
     battle.impact = 0.38;
     battle.impactX = battle.impactX ?? battle.bossX;
@@ -1005,13 +1186,24 @@
     playPlayerHitSound(battle.kind);
     battle.playerHp -= 1;
     state.hp = Math.max(1, state.hp - 1);
-    battle.message = message;
+    const penaltyMessage = punishBattleMistake(battle);
+    battle.message = penaltyMessage ? `${message} ${penaltyMessage}` : message;
     battle.playerInvul = battle.kind === "sumo" ? 2.1 : battle.kind === "final" ? 2 : 1.8;
     battle.playerHitFlash = 0.5;
     battle.impact = 0.32;
     battle.impactX = impactX ?? battle.playerX;
     battle.impactY = impactY ?? battle.playerY - 24;
     if (battle.playerHp <= 0) loseBattle("失血過多，闖關失敗。");
+  }
+
+  function punishBattleMistake(battle) {
+    battle.mistakes += 1;
+    battle.rage = clamp(battle.rage + 0.75, 0, 8);
+    if (battle.mistakes % 2 === 0 && battle.bossHp > 0 && battle.bossHp < battle.maxBossHp) {
+      battle.bossHp += 1;
+      return "BOSS 恢復 1 格 HP，攻擊加速！";
+    }
+    return "BOSS 攻擊加速！";
   }
 
   function winBattle() {
@@ -1078,6 +1270,7 @@
   function drawBattleScene() {
     const battle = state.battle;
     drawArenaFloor();
+    drawBattleObstacles(battle);
     drawBattleHazards(battle);
     drawPlayerProjectiles(battle);
     drawPressureShadow(battle.bossX, battle.bossY, battle.bossScale);
@@ -1105,6 +1298,8 @@
       ctx.globalAlpha = 1;
     }
 
+    drawSmallBoss(battle);
+
     if (battle.playerAttack > 0) {
       const slash = attackPoint(battle);
       if (battle.kind === "sumo") drawPalmImpact(slash.x, slash.y, 1.35);
@@ -1115,7 +1310,7 @@
     ctx.fillStyle = "#fff4ce";
     ctx.font = "700 22px Microsoft JhengHei, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(battle.kind === "sumo" ? "相撲：先看倒數，方向鍵走位，靠近並面向 BOSS 按 A 推擊；被推撞後會短暫無敵" : "方向鍵移動，靠近 BOSS 並面向牠，按 A 近身攻擊；被碰撞或招式打中會扣血", canvas.width / 2, 668);
+    ctx.fillText("方向鍵走位閃招，面向 BOSS 按 A 攻擊", canvas.width / 2, 668);
   }
 
   function drawArenaFloor() {
@@ -1132,6 +1327,85 @@
       ctx.moveTo(x, 302);
       ctx.lineTo(x, 640);
       ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawBattleObstacles(battle) {
+    if (!battle.obstacles?.length) return;
+    ctx.save();
+    for (const block of battle.obstacles) {
+      const cx = block.x + block.w / 2;
+      const cy = block.y + block.h / 2;
+      ctx.fillStyle = "rgba(0, 0, 0, .28)";
+      ctx.beginPath();
+      ctx.ellipse(cx, block.y + block.h + 10, block.w * 0.58, 18, 0, 0, Math.PI * 2);
+      ctx.fill();
+      const grd = ctx.createLinearGradient(block.x, block.y, block.x, block.y + block.h);
+      grd.addColorStop(0, "rgba(124, 92, 58, .94)");
+      grd.addColorStop(1, "rgba(58, 47, 37, .96)");
+      ctx.fillStyle = grd;
+      roundRect(block.x, block.y, block.w, block.h, 8);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 232, 181, .42)";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255, 232, 181, .18)";
+      ctx.fillRect(block.x + 10, block.y + 10, Math.max(8, block.w - 20), 8);
+    }
+    ctx.restore();
+  }
+
+  function drawSmallBoss(battle) {
+    const small = battle.smallBoss;
+    if (!small?.active) return;
+    drawPressureShadow(small.x, small.y, small.scale * 0.92);
+    if (small.attack > 0) drawBossShockwave(small.x, small.y, small.attack);
+    const bossOnRight = small.x >= battle.playerX;
+    const frame =
+      small.attack > 0
+        ? Math.min(3, Math.floor((1 - clamp(small.attack / 0.38, 0, 1)) * 4))
+        : Math.floor(small.step * 5) % 2;
+    ctx.save();
+    ctx.globalAlpha = small.hitFlash > 0 ? 0.72 : 0.92;
+    if (small.hitFlash > 0) ctx.filter = "brightness(1.8)";
+    if (battle.kind === "sumo") {
+      drawSpriteSheetFrame(assets.sumoBoss, 4, 1, frame, small.x, small.y - 12, small.scale, !bossOnRight);
+    } else if (combatProfiles[battle.kind]) {
+      drawSpriteSheetFrame(assets[combatProfiles[battle.kind].bossAsset], 4, 1, frame, small.x, small.y - 8, small.scale, !bossOnRight);
+    } else {
+      drawBossCell(state.currentRoom.bossCell, small.x, small.y, small.scale);
+    }
+    ctx.restore();
+    ctx.save();
+    ctx.fillStyle = "#ffe0a0";
+    ctx.font = "800 22px Microsoft JhengHei, sans-serif";
+    ctx.textAlign = "center";
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "rgba(0,0,0,.7)";
+    ctx.restore();
+  }
+
+  function drawDangerZones(battle) {
+    if (!battle.dangerZones?.length) return;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (const zone of battle.dangerZones) {
+      const warning = zone.delay > 0;
+      const alpha = warning ? 0.32 + Math.sin(performance.now() / 65) * 0.12 : 0.55;
+      ctx.fillStyle = `rgba(255, 58, 58, ${alpha})`;
+      ctx.strokeStyle = warning ? "rgba(255, 230, 130, .82)" : "rgba(255, 80, 64, .9)";
+      ctx.lineWidth = warning ? 4 : 6;
+      if (zone.w && zone.h) {
+        roundRect(zone.x - zone.w / 2, zone.y - zone.h / 2, zone.w, zone.h, 10);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.arc(zone.x, zone.y, zone.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
     }
     ctx.restore();
   }
@@ -1870,13 +2144,22 @@
     return { type: "scenario", idiom: item, answer: item.idiom, title: "選出最適合情境的成語", text: item.scene, choices: shuffle([item.idiom, ...distractors(item.idiom, 3)]) };
   }
 
+  function applyBossQuestionPenalty() {
+    if (state.pending?.source !== "boss" && state.pending?.source !== "runnerBoss") return "";
+    if (state.battle) {
+      state.battle.bossHp = Math.min(state.battle.maxBossHp, state.battle.bossHp + 1);
+      state.battle.rage = clamp(state.battle.rage + 1, 0, 8);
+    }
+    return " BOSS 恢復 1 格 HP，攻擊也變快。";
+  }
+
   function answerQuestion(choice) {
     const ok = choice === state.pending.answer;
     if (!ok) {
       playSound("wrong", 0.9);
       state.hp = Math.max(1, state.hp - 1);
       const hint = state.pending.type === "cloze" ? `提示：缺字是「${state.pending.answer}」。` : "再觀察情境與成語意思。";
-      feedback.textContent = `答錯了，${hint}`;
+      feedback.textContent = `答錯了，${hint}${applyBossQuestionPenalty()}`;
       updateHud();
       return;
     }
